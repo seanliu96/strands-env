@@ -65,7 +65,7 @@ class Environment:
         self.verbose = verbose
 
         path = self.default_system_prompt_path
-        self.system_prompt = system_prompt or (path.read_text() if path and path.exists() else None)
+        self.system_prompt = system_prompt or (path.read_text().strip() if path and path.exists() else None)
 
     async def reset(self) -> None:
         """Reset for a new episode. Override for environment-specific init.

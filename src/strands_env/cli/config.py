@@ -78,7 +78,7 @@ class EnvConfig:
         """Load system prompt from file if path is set."""
         if self.system_prompt_path is None:
             return None
-        return self.system_prompt_path.read_text()
+        return self.system_prompt_path.read_text().strip()
 
     def to_dict(self) -> dict:
         """Convert to dict for serialization."""
