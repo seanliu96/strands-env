@@ -97,7 +97,6 @@ class RolloutLogger:
             "tool_name_error_rate": 0.0,
             "tool_success_rate": 0.0,
             "tool_parse_error_rate": 0.0,
-            "tool_latency_s": 0.0,
         }
 
         total_executed_tool_calls = 0
@@ -133,10 +132,12 @@ class RolloutLogger:
                 aggregated["tool_parse_error_rate"] += tm.get("parse_errors", 0)
                 tool_latency_s += tm["latency_s"]
             total_executed_tool_calls += executed_tool_calls
-            per_sample["tool_latency_s"].append(tool_latency_s / executed_tool_calls if executed_tool_calls else 0)
+            per_sample["executed_tool_calls"].append(executed_tool_calls)
+            per_sample["tool_latency_s"].append(tool_latency_s / executed_tool_calls if executed_tool_calls else 0.0)
 
         log_dict: dict[str, float] = {}
         for name, values in per_sample.items():
+            assert values, f"Empty values for per-sample metric: {name}"
             log_dict |= {f"{name}_{k}": v for k, v in compute_statistics(values).items()}
         for name, value in aggregated.items():
             log_dict[f"{name}"] = value / total_executed_tool_calls if total_executed_tool_calls else 0
