@@ -22,7 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "strands-sglang>=0.3.4",
-    "strands-agents-tools",
+    "strands-agents-tools>=0.2.0",
     "openai",
     "datasets",
     "math-verify>=0.8.0",
@@ -79,6 +79,14 @@ disallow_untyped_decorators = true
 warn_redundant_casts = true
 warn_unreachable = true
 ignore_missing_imports = true
+
+[tool.uv]
+conflicts = [
+    [
+        { extra = "litellm" },
+        { extra = "terminal-bench" },
+    ],
+]
 
 [tool.ruff]
 line-length = 120
