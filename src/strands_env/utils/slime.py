@@ -47,15 +47,21 @@ class RolloutLogger:
     Set to 0 to disable.
     """
 
-    def __init__(self, n_rollouts_per_step: int = 3, log_per_tool_metrics: bool = False) -> None:
+    def __init__(
+        self,
+        n_rollouts_per_step: int = 3,
+        max_rollouts: int = 3000,
+        log_per_tool_metrics: bool = False,
+    ) -> None:
         """Initialize a `RolloutLogger` instance."""
         self._weave_init = False
         self._weave_client: WeaveClient | None = None
         self._prev_ref: ObjectRef | None = None
-        self.dataset: weave.Dataset | None = None
+        self._rows: list[dict] = []
         self.run_name: str | None = None
         self.n_rollouts_per_step = n_rollouts_per_step
         self.log_per_tool_metrics = log_per_tool_metrics
+        self.max_rollouts = max_rollouts
 
     def log_rollouts(
         self,
@@ -192,19 +198,22 @@ class RolloutLogger:
         if not rows:
             return
 
+        # Accumulate rows locally, cap at max_weave_rows, publish fresh each time.
+        self._rows.extend(rows)
+        if len(self._rows) > self.max_rollouts:
+            self._rows = self._rows[-self.max_rollouts :]
+
         dataset_name = f"{self.run_name}_rollouts"
-        if self.dataset is None:
-            self.dataset = weave.Dataset(name=dataset_name, rows=weave.Table(rows=rows))
-            self._prev_ref = weave.publish(self.dataset)
-        else:
-            self.dataset = self.dataset.add_rows(rows)  # auto-publishes
-            # Delete previous version (each version is a superset, so old ones are redundant).
-            if self._prev_ref is not None and self._weave_client is not None:
-                try:
-                    self._weave_client.delete_object_version(self._prev_ref)
-                except Exception:
-                    logger.debug("Failed to delete previous Weave dataset version", exc_info=True)
-            self._prev_ref = weave.ref(dataset_name)
+        dataset = weave.Dataset(name=dataset_name, rows=weave.Table(rows=self._rows))
+        new_ref = weave.publish(dataset)
+
+        # Delete previous version (each version is a superset, so old ones are redundant).
+        if self._prev_ref is not None and self._weave_client is not None:
+            try:
+                self._weave_client.delete_object_version(self._prev_ref)
+            except Exception:
+                logger.debug("Failed to delete previous Weave dataset version", exc_info=True)
+        self._prev_ref = new_ref
 
         logger.info(
             "Published %d new samples to Weave (rollout %d, step %d)",
